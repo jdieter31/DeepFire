@@ -148,12 +148,12 @@ data = embed_to_vocab(word_list, vocab)
 
 
 in_size = out_size = len(vocab)
-lstm_size = 128 #16 --Maybe reduce lstm_size maybe won't overfit as much
-num_layers = 21
+lstm_size = 16 #16 --Maybe reduce lstm_size maybe won't overfit as much
+num_layers = 2
 batch_size = 64 #128
 time_steps = 100 #50
 
-NUM_TRAIN_BATCHES = 2000
+NUM_TRAIN_BATCHES = 20000
 
 LEN_TEST_TEXT = 1000 # Number of test characters of text to generate after training the network
 
