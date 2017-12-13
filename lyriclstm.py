@@ -117,7 +117,7 @@ def decode_embed(array, vocab):
 
 
 
-ckpt_file = ""
+ckpt_file = "saved/model_lyrics.ckpt"
 TEST_PREFIX = "I " # Prefix to prompt the network in test mode
 
 print("Usage:")
@@ -131,7 +131,7 @@ if len(sys.argv)==3:
 
 
 ## Load the data
-data_ = "saved/model_lyrics.ckpt"
+data_ = ""
 with open('data/rap.txt', 'r') as f:
 	data_ += f.read()
 data_ = data_.lower()
