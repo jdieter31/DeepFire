@@ -131,7 +131,7 @@ if len(sys.argv)==3:
 
 
 ## Load the data
-data_ = ""
+data_ = "saved/model_lyrics.ckpt"
 with open('data/rap.txt', 'r') as f:
 	data_ += f.read()
 data_ = data_.lower()
