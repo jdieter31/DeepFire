@@ -9,7 +9,7 @@ import random
 import time
 import sys
 import re
-
+import matplotlib.pyplot as plt
 
 ## RNN with num_layers LSTM layers and a fully-connected output layer
 ## The network allows for a dynamic number of iterations, depending on the inputs it receives.
@@ -87,12 +87,13 @@ class ModelNetwork:
 	## ybatch must be (batch_size, timesteps, output_size)
 	def train_batch(self, xbatch, ybatch):
 		init_value = np.zeros((xbatch.shape[0], self.num_layers*2*self.lstm_size))
-
-		cost, _ = self.session.run([self.cost, self.train_op], feed_dict={self.xinput:xbatch, self.y_batch:ybatch, self.lstm_init_value:init_value   } )
-
+		cost, _ = self.session.run([self.cost, self.train_op], feed_dict={self.xinput:xbatch, self.y_batch:ybatch, self.lstm_init_value:init_value})
 		return cost
 
-
+	def test_batch(self, xbatch, ybatch):
+		init_value = np.zeros((xbatch.shape[0], self.num_layers * 2 * self.lstm_size))
+		cost = self.session.run([self.cost], feed_dict={self.xinput: xbatch, self.y_batch: ybatch, self.lstm_init_value: init_value})
+		return cost
 
 
 # Embed string to character-arrays -- it generates an array len(data) x len(vocab)
@@ -126,24 +127,33 @@ with open('data/rap.txt', 'r') as f:
 	data_ += f.read()
 data_ = data_.lower()
 
+test_data_ = ""
+with open('data/test_rap.txt', 'r') as f:
+	test_data_ += f.read()
+test_data_ = test_data_.lower()
 ## Convert to 1-hot coding
 
-word_list = re.findall('\w+|\n', data_, flags=0)
+train_word_list = re.findall('\w+|\n', data_, flags=0)
+test_word_list = re.findall('\w+|\n', test_data_, flags=0)
+
+word_list = test_word_list + train_word_list
 vocab = []
 for w in word_list:
-    if w not in vocab:
-        vocab.append(w)
+	if w not in vocab:
+		vocab.append(w)
 print(vocab)
-data = embed_to_vocab(word_list, vocab)
+data = embed_to_vocab(train_word_list, vocab)
+test_data = embed_to_vocab(test_word_list, vocab)
 
 
 in_size = out_size = len(vocab)
-lstm_size = 16 #16 --Maybe reduce lstm_size maybe won't overfit as much
-num_layers = 2
+lstm_size = 32 #16 --Maybe reduce lstm_size maybe won't overfit as much
+num_layers = 1
 batch_size = 64 #128
+test_batch_size = 8
 time_steps = 100 #50
 
-NUM_TRAIN_BATCHES = 6000
+NUM_TRAIN_BATCHES = 3000
 
 LEN_TEST_TEXT = 1000 # Number of test characters of text to generate after training the network
 
@@ -175,29 +185,49 @@ if ckpt_file == "":
 	batch = np.zeros((batch_size, time_steps, in_size))
 	batch_y = np.zeros((batch_size, time_steps, in_size))
 
-	possible_batch_ids = range(data.shape[0]-time_steps-1)
+	test_batch = np.zeros((test_batch_size, time_steps, in_size))
+	test_batch_y = np.zeros((test_batch_size, time_steps, in_size))
+	# Start training at random spot as long as its at the start of a measure (4 beats).
+	possible_batch_ids = [i * 4 for i in range((data.shape[0] - time_steps) // 4 - 1)]
+	possible_batch_ids_test = [i * 4 for i in range((test_data.shape[0] - time_steps) // 4 - 1)]
+	epochs = [20 * i for i in range(NUM_TRAIN_BATCHES // 20)]
+	test_costs = []
+	train_costs = []
 	for i in range(NUM_TRAIN_BATCHES):
-		# Sample time_steps consecutive samples from the dataset text file
-		batch_id = random.sample( possible_batch_ids, batch_size )
+		# Sample time_steps consecutive samples
+		batch_id = random.sample(possible_batch_ids, batch_size)
+		batch_id_test = random.sample(possible_batch_ids_test, test_batch_size)
 
 		for j in range(time_steps):
-			ind1 = [k+j for k in batch_id]
-			ind2 = [k+j+1 for k in batch_id]
-
+			ind1 = [k + j for k in batch_id]
+			ind2 = [k + j + 1 for k in batch_id]
 			batch[:, j, :] = data[ind1, :]
 			batch_y[:, j, :] = data[ind2, :]
-
+			if (i%20 == 0):
+				ind1_test = [k + j for k in batch_id_test]
+				ind2_test = [k + j + 1 for k in batch_id_test]
+				test_batch[:, j, :] = test_data[ind1_test, :]
+				test_batch_y[:, j, :] = test_data[ind2_test, :]
 
 		cst = net.train_batch(batch, batch_y)
 
-		if (i%100) == 0:
+		if (i % 20) == 0:
 			new_time = time.time()
 			diff = new_time - last_time
 			last_time = new_time
 
-			print("batch: ",i,"   loss: ",cst,"   speed: ",(100.0/diff)," batches / s")
+			test_cost = net.test_batch(test_batch, test_batch_y)
+			print("batch: ", i, "   loss: ", cst, "test loss: ", test_cost, "   speed: ", (20.0 / diff), " batches / s")
+			test_costs.append(test_cost)
+			train_costs.append(cst)
 
-	saver.save(sess, "saved/model_lyrics.ckpt")
+	saver.save(sess, "saves/model.ckpt")
+	test_plt = plt.plot(epochs, test_costs, label='Test Set')
+	train_plt = plt.plot(epochs, train_costs, label='Train Set')
+	plt.xlabel('Number of Epochs')
+	plt.ylabel('Cross Entropy Loss')
+	plt.legend(loc='best')
+	plt.show()
 
 
 

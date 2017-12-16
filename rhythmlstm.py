@@ -3,7 +3,7 @@ import numpy as np
 import random
 import time
 import sys
-
+import matplotlib.pyplot as plt
 
 ## RNN with num_layers LSTM layers and a fully-connected output layer
 ## The network allows for a dynamic number of iterations, depending on the inputs it receives.
@@ -90,6 +90,14 @@ class ModelNetwork:
 
         return cost
 
+    def test_batch(self, xbatch, ybatch):
+        init_value = np.zeros((xbatch.shape[0], self.num_layers * 2 * self.lstm_size))
+
+        cost = self.session.run([self.cost], feed_dict={self.xinput: xbatch, self.y_batch: ybatch,
+                                                                          self.lstm_init_value: init_value})
+
+        return cost
+
 
 def convert_to_one_hot(data, vocab_size):
     one_hot = np.zeros((len(data), vocab_size))
@@ -98,14 +106,16 @@ def convert_to_one_hot(data, vocab_size):
     return one_hot
 
 
-def run(raw_data, prefix, vocab_size, gen_length, ckpt_file=""):
-    data = convert_to_one_hot(raw_data, vocab_size)
+def run(train_data, test_data, prefix, vocab_size, gen_length, ckpt_file=""):
+    data = convert_to_one_hot(train_data, vocab_size)
+    test = convert_to_one_hot(test_data, vocab_size)
 
     in_size = out_size = vocab_size
-    lstm_size = 256  # 128
+    lstm_size = 16  # 128
     num_layers = 2
-    batch_size = 12  # 128
+    batch_size = 8  # 128
     time_steps = 28  # 50
+    test_batch_size = 3
 
     NUM_TRAIN_BATCHES = 1000
 
@@ -132,11 +142,19 @@ def run(raw_data, prefix, vocab_size, gen_length, ckpt_file=""):
 
         batch = np.zeros((batch_size, time_steps, in_size))
         batch_y = np.zeros((batch_size, time_steps, in_size))
+
+        test_batch = np.zeros((test_batch_size, time_steps, in_size))
+        test_batch_y = np.zeros((test_batch_size, time_steps, in_size))
         #Start training at random spot as long as its at the start of a measure (4 beats).
         possible_batch_ids = [i*4 for i in range((data.shape[0] - time_steps)//4 - 1)]
+        possible_batch_ids_test = [i*4 for i in range((test.shape[0] - time_steps)//4 - 1)]
+        epochs = [20*i for i in range(NUM_TRAIN_BATCHES//20)]
+        test_costs = []
+        train_costs = []
         for i in range(NUM_TRAIN_BATCHES):
             # Sample time_steps consecutive samples
             batch_id = random.sample(possible_batch_ids, batch_size)
+            batch_id_test = random.sample(possible_batch_ids_test, test_batch_size)
 
             for j in range(time_steps):
                 ind1 = [k + j for k in batch_id]
@@ -144,16 +162,31 @@ def run(raw_data, prefix, vocab_size, gen_length, ckpt_file=""):
                 batch[:, j, :] = data[ind1, :]
                 batch_y[:, j, :] = data[ind2, :]
 
+                ind1_test = [k + j for k in batch_id_test]
+                ind2_test = [k + j + 1 for k in batch_id_test]
+                test_batch[:, j, :] = test[ind1_test, :]
+                test_batch_y[:, j, :] = test[ind2_test, :]
+
             cst = net.train_batch(batch, batch_y)
 
-            if (i % 100) == 0:
+            if (i % 20) == 0:
                 new_time = time.time()
                 diff = new_time - last_time
                 last_time = new_time
 
-                print("batch: ", i, "   loss: ", cst, "   speed: ", (100.0 / diff), " batches / s")
+                test_cost = net.test_batch(test_batch,test_batch_y)
+                print("batch: ", i, "   loss: ", cst, "test loss: ", test_cost, "   speed: ", (20.0 / diff), " batches / s")
+                test_costs.append(test_cost)
+                train_costs.append(cst)
+
 
         saver.save(sess, "saves/model.ckpt")
+        test_plt = plt.plot(epochs, test_costs, label='Test Set')
+        train_plt = plt.plot(epochs,train_costs, label='Train Set')
+        plt.xlabel('Number of Epochs')
+        plt.ylabel('Cross Entropy Loss')
+        plt.legend(loc='best')
+        plt.show()
 
     ## 2) GENERATE LEN_TEST_TEXT CHARACTERS USING THE TRAINED NETWORK
 
