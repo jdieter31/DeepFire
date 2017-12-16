@@ -110,8 +110,11 @@ def test_noun_verb_noun_constructions(three_parts):
 		return float(valid) / float(count)
 
 # f = open("data/rap.txt")
-f = open("output/markov_data/rap_2_500.txt")
+# f = open("output/markov_data/rap_2_500.txt")
+# f = open("output/markov_data/rap_3_500.txt")
+# f = open("lstm2layer_output.txt")
+f = open("lstm1layer_output.txt")
+
+
 t = f.readlines()
 test_common_constructions(t[0:50])
-
-
