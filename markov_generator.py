@@ -3,7 +3,7 @@ import random
 import sys
 import os
 
-OUT_DIR = 'markov_lyrics'
+OUT_DIR = 'output'
 
 def read_input(in_file_name):
 	with open(in_file_name, 'r') as myfile:
@@ -49,7 +49,7 @@ def generate():
 		#print(window)
 		#print(next_word)
 	song_lyrics = ' '.join(song_lyrics_list).replace('\n ', '\n')
-	out_file_name = 'rap_' + input_file.replace('.txt', '') + '_' + prev_words + '_' + song_length + '.txt'
+	out_file_name = 'markov_' + input_file.replace('.txt', '') + '_' + prev_words + '_' + song_length + '.txt'
 	with open(os.path.join(OUT_DIR, out_file_name), 'a') as outfile:
 		outfile.write(song_lyrics)
 		#outfile.write('\n')
