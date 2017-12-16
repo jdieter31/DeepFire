@@ -117,18 +117,8 @@ def decode_embed(array, vocab):
 
 
 
-ckpt_file = "saved/model_lyrics.ckpt"
+ckpt_file = ""
 TEST_PREFIX = "I " # Prefix to prompt the network in test mode
-
-print("Usage:")
-print ('\t\t ', sys.argv[0], ' [ckpt model to load] [prefix, e.g., "The "]')
-if len(sys.argv)>=2:
-	ckpt_file=sys.argv[1]
-if len(sys.argv)==3:
-	TEST_PREFIX = sys.argv[2]
-
-
-
 
 ## Load the data
 data_ = ""
@@ -153,7 +143,7 @@ num_layers = 2
 batch_size = 64 #128
 time_steps = 100 #50
 
-NUM_TRAIN_BATCHES = 20000
+NUM_TRAIN_BATCHES = 6000
 
 LEN_TEST_TEXT = 1000 # Number of test characters of text to generate after training the network
 
